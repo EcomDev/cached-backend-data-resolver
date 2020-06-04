@@ -21,7 +21,10 @@ function executeLoader(loader) {
 function readCookies(cookieNames, readCookie) {
     return cookieNames.reduce(
         (result, cookie) => {
-            result[cookie] = readCookie(cookie);
+            const cookieValue = readCookie(cookie);
+            if (cookieValue !== undefined) {
+                result[cookie] = cookieValue;
+            }
             return result;
         },
         {}
@@ -51,12 +54,14 @@ export default function (loader, readCookie, cachePrefix, ttl) {
     }
 
     return {
-        add(section, placeholder, requiredCookies) {
-            sections[section] = [placeholder, requiredCookies];
+        add(section, placeholder, requiredCookies, optionalCookies) {
+            optionalCookies = optionalCookies || [];
+            sections[section] = [placeholder, requiredCookies, optionalCookies];
         },
         load(section) {
-            const [placeholder, requiredCookies] = sections[section];
-            const cookieValues = readCookies(requiredCookies, readCookie);
+            const [placeholder, requiredCookies, optionalCookies] = sections[section];
+
+            const cookieValues = readCookies([...requiredCookies, ...optionalCookies], readCookie);
 
             if (isRequiredCookieSet(requiredCookies, cookieValues)) {
                 const cachedValue = storage.load(section, cookieValues);

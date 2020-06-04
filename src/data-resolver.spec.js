@@ -27,7 +27,7 @@ function setupEcommerceDataResolver(cookieValues, sectionBackendResponses, ttl) 
 
     const dataResolver = dataResolverFactory(
         loader,
-        fakeCookieRetriever(cookieValues),
+        typeof cookieValues === 'function' ? cookieValues : fakeCookieRetriever(cookieValues),
         undefined,
         ttl
     );
@@ -94,14 +94,16 @@ describe('Uncached behaviour', () => {
 
 describe('Cached behaviour', () => {
     let loadedSections, dataResolver;
+
+
     beforeEach(() => [loadedSections, dataResolver] = setupEcommerceDataResolver(
         {
             cart: 123,
             wishlist: 567
         },
         {
-            "shopping-cart": {items: ['Cached Item']},
-            "wishlist": {likedItems: ['Cached Item']}
+           "shopping-cart": {items: ['Cached Item']},
+           "wishlist": {likedItems: ['Cached Item']}
         },
         0.005
     ));
@@ -201,17 +203,90 @@ describe('Cached behaviour', () => {
     });
 })
 
+describe("Cached data with optional cookie markers", () => {
+    let dataResolver, cookies, backendData;
+
+    beforeEach(() => {
+        cookies = {};
+        backendData = {
+            'customer-achievements': [
+                'Cached Achievement 1',
+                'Cached Achievement 2'
+            ],
+            'customer-failures': [
+                'Cached Fail 1',
+                'Cached Fail 2'
+            ]
+        };
+
+        const [loader] = fakeLoaderFactory(section => backendData[section]);
+        dataResolver = dataResolverFactory(
+            loader,
+            cookieName => cookies[cookieName]
+        );
+
+        dataResolver.add(
+            'customer-achievements',
+            ['No Achievements'],
+            ['achievements', 'customer'],
+            ['country', 'season']
+        );
+
+        dataResolver.add(
+            'customer-failures',
+            ['No Fails'],
+            ['failures', 'customer'],
+            ['country', 'year']
+        );
+    })
+
+    it('should return non cached value if optional marker appeared in cookies', async () => {
+        cookies = {
+            achievements: 12,
+            customer: 777
+        };
+
+        await dataResolver.load('customer-achievements');
+
+        cookies['country'] = 'US';
+
+        backendData['customer-achievements'] = ['Changed Achievement 1'];
+
+        expect(await dataResolver.load('customer-achievements')).toEqual(['Changed Achievement 1']);
+    });
+
+    it('should return cached value if optional marker stays the same', async () => {
+        cookies = {
+            failures: 12,
+            customer: 777,
+            country: 'NL'
+        };
+
+        await dataResolver.load('customer-failures');
+
+        backendData['customer-failures'] = ['Should not fail here!'];
+
+        cookies['season'] = 'fall';
+
+        expect(await dataResolver.load('customer-failures')).toEqual(['Cached Fail 1', 'Cached Fail 2']);
+    });
+});
 
 function fakeLoaderFactory(data)
 {
     const loadedSections = [];
+    const dataRetriever =
+        typeof data === 'function' ?
+            data :
+            section => data[section] === undefined ? 'NO DATA' : data[section];
+
     return [
         (sections) => {
             loadedSections.splice(0, loadedSections.length);
             return Promise.resolve(
                 sections.reduce((result, section) => {
                     loadedSections.push(section);
-                    result[section] = data[section] !== undefined ? data[section] : 'NO DATA';
+                    result[section] = dataRetriever(section);
                     return result;
                 },
                 {}
