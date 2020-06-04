@@ -3,7 +3,7 @@ import {clearCache, delayTest} from './test-utils';
 
 beforeEach(clearCache);
 
-function setupEcommerceDataResolver(cookieValues, sectionBackendResponses) {
+function setupEcommerceDataResolver(cookieValues, sectionBackendResponses, ttl) {
     cookieValues = cookieValues || {
         cart: 'cart123',
         wishlist: 'wishlist123'
@@ -27,7 +27,9 @@ function setupEcommerceDataResolver(cookieValues, sectionBackendResponses) {
 
     const dataResolver = dataResolverFactory(
         loader,
-        fakeCookieRetriever(cookieValues)
+        fakeCookieRetriever(cookieValues),
+        undefined,
+        ttl
     );
 
     dataResolver.add('shopping-cart', {items: [], total: 0}, ['cart']);
@@ -100,7 +102,8 @@ describe('Cached behaviour', () => {
         {
             "shopping-cart": {items: ['Cached Item']},
             "wishlist": {likedItems: ['Cached Item']}
-        }
+        },
+        0.005
     ));
 
     it('should return value from cache if all cookie markers are the same', async () => {
@@ -130,8 +133,72 @@ describe('Cached behaviour', () => {
             ]
         )
     })
-    it.todo('should return value from loader if at least one cookie marker is invalid');
-    it.todo('should return value from placeholder if required cookie marker is missing');
+    it('should return value from loader if at least one cookie marker is invalid', async () => {
+        await Promise.all([
+            dataResolver.load('shopping-cart'),
+            dataResolver.load('wishlist')
+        ]);
+
+        [, dataResolver] = setupEcommerceDataResolver(
+            {
+                cart: 111,
+                wishlist: 222
+            },
+            {
+                "shopping-cart": {items: ['Non cached item']},
+                "wishlist": {likedItems: ['Non cached item']}
+            }
+        )
+
+        expect(await Promise.all([
+            dataResolver.load('shopping-cart'),
+            dataResolver.load('wishlist')
+        ])).toEqual(
+            [
+                {items: ['Non cached item']},
+                {likedItems: ['Non cached item']}
+            ]
+        )
+    })
+    it('should return value from placeholder if required cookie marker is missing', async () => {
+        await Promise.all([
+            dataResolver.load('shopping-cart'),
+            dataResolver.load('wishlist')
+        ]);
+
+        [, dataResolver] = setupEcommerceDataResolver(
+            {},
+            {
+                "shopping-cart": {items: ['This should never be shown']},
+                "wishlist": {likedItems: ['This should never be shown']}
+            }
+        )
+
+        expect(await Promise.all([
+            dataResolver.load('wishlist'),
+            dataResolver.load('shopping-cart')
+        ])).toEqual([
+            {likedItems: []},
+            {items: [], total: 0}
+        ]);
+    });
+    it('should load data from server if cache lifetime is past required time', async () => {
+        await dataResolver.load('shopping-cart');
+
+        [, dataResolver] = setupEcommerceDataResolver(
+            {
+                cart: 123
+            },
+            {
+                "shopping-cart": {items: ['Non cached item']}
+            },
+            0.005
+        )
+
+        await delayTest(6);
+
+        expect(await dataResolver.load('shopping-cart')).toEqual({items: ['Non cached item']});
+    });
 })
 
 

@@ -37,10 +37,11 @@ function isRequiredCookieSet(requiredCookies, cookies) {
     );
 }
 
-export default function (loader, readCookie, cachePrefix) {
+export default function (loader, readCookie, cachePrefix, ttl) {
     cachePrefix = cachePrefix || 'data-resolver';
+    ttl = ttl || 360;
 
-    const storage = cacheStorage(cachePrefix);
+    const storage = cacheStorage(cachePrefix, ttl);
 
     const scheduleLoad = (section, resolve) => {
        dataToLoad.push([section, resolve]);
