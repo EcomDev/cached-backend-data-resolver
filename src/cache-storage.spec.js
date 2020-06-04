@@ -50,7 +50,7 @@ describe('Default storage options', () => {
             {marker1: 0, marker2: 1}
         );
 
-        await delayTest(5);
+        await delayTest(6);
 
         expect(
             expiredStorage.load(
@@ -77,5 +77,17 @@ describe('Default storage options', () => {
                 {marker1: 0, marker2: 1}
             )
         ).toEqual({value: 'still valid value'})
+    });
+
+    it('should return undefined if storage is empty on load', () => {
+        expect(readStorage.load('some-empty-key', {marker1: true, marker2: false})).toEqual(undefined);
+    });
+
+    it('should return undefined if data is partially in storage', () => {
+        writeStorage.save('some-empty-key', {data:'value'}, {marker1: true, marker2: false});
+
+        window.localStorage.removeItem('cache-onesome-empty-key');
+
+        expect(readStorage.load('some-empty-key', {marker1: true, marker2: false})).toEqual(undefined);
     });
 });

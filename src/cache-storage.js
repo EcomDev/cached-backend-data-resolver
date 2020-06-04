@@ -11,7 +11,8 @@ function storageFactory(prefix) {
             return browserStorage.setItem(prefix + key, value);
         },
         getItem(key) {
-            return browserStorage.getItem(prefix + key);
+            const value = browserStorage.getItem(prefix + key);
+            return value ? value : undefined;
         }
     }
 }
@@ -49,9 +50,13 @@ export default function (prefix, ttl) {
             );
         },
         load(section, markers) {
-            const storedMetadata = JSON.parse(browserStorage.getItem(
-                metadataKey(section)
-            ));
+            const metadataString = browserStorage.getItem(metadataKey(section));
+
+            if (!metadataString) {
+                return undefined;
+            }
+
+            const storedMetadata = JSON.parse(metadataString);
 
             if (!storedMetadata) {
                 return undefined;
@@ -67,7 +72,14 @@ export default function (prefix, ttl) {
                 return undefined;
             }
 
-            return JSON.parse(browserStorage.getItem(section));
+
+            const data = browserStorage.getItem(section);
+
+            if (!data) {
+                return undefined;
+            }
+
+            return JSON.parse(data);
         }
     };
 }
