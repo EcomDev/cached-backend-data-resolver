@@ -33,8 +33,9 @@ function areMarkersSame(left, right) {
     return true;
 }
 
-export default function (prefix) {
+export default function (prefix, ttl) {
     const browserStorage = storageFactory(prefix);
+    ttl = ttl || 360;
 
     return {
         save(section, data, markers) {
@@ -42,7 +43,8 @@ export default function (prefix) {
             browserStorage.setItem(
                 metadataKey(section),
                 JSON.stringify({
-                    markers: markers
+                    markers: markers,
+                    expireTime: (new Date()).getTime() + ttl*1000
                 })
             );
         },
@@ -56,6 +58,12 @@ export default function (prefix) {
             }
 
             if (!areMarkersSame(storedMetadata.markers, markers)) {
+                return undefined;
+            }
+
+            let currentTime = (new Date()).getTime();
+
+            if (storedMetadata.expireTime < currentTime) {
                 return undefined;
             }
 

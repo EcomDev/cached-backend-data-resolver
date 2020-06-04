@@ -40,4 +40,42 @@ describe('Default storage options', () => {
 
         expect(readStorage.load('section2', {marker2: 100})).toEqual(undefined);
     });
+
+    it('should expire records in cache after specified lifetime', async () => {
+        const expiredStorage = cacheStorage('cache-one', 0.004);
+
+        expiredStorage.save(
+            'section_that_expires',
+            {value: 'that expires too'},
+            {marker1: 0, marker2: 1}
+        );
+
+        await delayTest(5);
+
+        expect(
+            expiredStorage.load(
+                'section_that_expires',
+                {marker1: 0, marker2: 1}
+            )
+        ).toEqual(undefined)
+    })
+
+    it('should keep still valid records in cache one millisecond before expiration', async () => {
+        const expiredStorage = cacheStorage('cache-one', 0.005);
+
+        expiredStorage.save(
+            'section_that_does_not_expire',
+            {value: 'still valid value'},
+            {marker1: 0, marker2: 1}
+        );
+
+        await delayTest(3);
+
+        expect(
+            expiredStorage.load(
+                'section_that_does_not_expire',
+                {marker1: 0, marker2: 1}
+            )
+        ).toEqual({value: 'still valid value'})
+    });
 });
