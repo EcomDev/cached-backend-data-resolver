@@ -1,9 +1,7 @@
 import dataResolverFactory from './data-resolver';
+import {clearCache, delayTest} from './test-utils';
 
-beforeEach(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-});
+beforeEach(clearCache);
 
 function setupEcommerceDataResolver(cookieValues, sectionBackendResponses) {
     cookieValues = cookieValues || {
@@ -90,7 +88,7 @@ describe('Uncached behaviour', () => {
             {product_ids: []}
         ]);
     });
-})
+});
 
 describe('Cached behaviour', () => {
     let loadedSections, dataResolver;

@@ -1,9 +1,7 @@
 import cacheStorage from './cache-storage';
+import {delayTest, clearCache} from "./test-utils";
 
-beforeEach(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-});
+beforeEach(clearCache);
 
 describe('Default storage options', () => {
     let writeStorage, readStorage;
